@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHM GMM — Mode Identification via Gaussian Mixture Models</title>
+  <meta name="description" content="Structural Health Monitoring: identifying vibration modes from ambient acceleration signals using GMM clustering and BIC model selection." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Plotly.js CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════ -->
+<nav class="navbar" aria-label="Main navigation">
+  <div class="container navbar-inner">
+    <a href="#hero" class="navbar-brand">
+      <span class="brand-icon" aria-hidden="true">🏗</span>
+      SHM&thinsp;·&thinsp;GMM
+    </a>
+    <ul class="navbar-links">
+      <li><a href="#stats">Overview</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#charts">Charts</a></li>
+      <li><a href="#modes">Modes</a></li>
+      <li><a href="#citations">Dataset</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     HERO
+══════════════════════════════════════════ -->
+<section id="hero">
+  <canvas id="waveCanvas" aria-hidden="true"></canvas>
+
+  <div class="container hero-content">
+    <div class="hero-badge fade-in" aria-label="Project status">Live Analysis · LANL Benchmark</div>
+
+    <h1 class="hero-title fade-in fade-in-delay-1">
+      <span class="gradient-text">GMM Clustering</span><br/>
+      for Structural Mode<br/>Identification
+    </h1>
+
+    <p class="hero-sub fade-in fade-in-delay-2">
+      Automatically discover vibration modes from ambient acceleration signals
+      using Gaussian Mixture Models — without assuming the mode count in advance.
+      Optimal model order selected by&nbsp;BIC.
+    </p>
+
+    <div class="hero-buttons fade-in fade-in-delay-3">
+      <a href="#charts" class="btn btn-primary">
+        <span>📊</span> View Results
+      </a>
+      <a href="#how-it-works" class="btn btn-outline">
+        <span>⚙️</span> How it Works
+      </a>
+    </div>
+  </div>
+
+  <div class="scroll-indicator" aria-hidden="true">
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     STAT CARDS
+══════════════════════════════════════════ -->
+<section id="stats" class="section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">At a glance</span>
+      <h2 class="section-title">Pipeline Results</h2>
+      <p class="section-desc">Key numbers extracted from the LANL synthetic benchmark signal</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card fade-in fade-in-delay-1">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-label">Modes Found</div>
+        <span class="stat-value counter" id="stat-modes" data-target="3">0</span>
+        <div class="stat-unit">vibration modes</div>
+      </div>
+      <div class="stat-card fade-in fade-in-delay-2">
+        <div class="stat-icon">🔵</div>
+        <div class="stat-label">Best GMM Components</div>
+        <span class="stat-value counter" id="stat-gmm" data-target="3">0</span>
+        <div class="stat-unit">selected by BIC</div>
+      </div>
+      <div class="stat-card fade-in fade-in-delay-3">
+        <div class="stat-icon">📈</div>
+        <div class="stat-label">Dataset Size</div>
+        <span class="stat-value counter" id="stat-samples" data-target="12000">0</span>
+        <div class="stat-unit">samples · 60 s signal</div>
+      </div>
+      <div class="stat-card fade-in fade-in-delay-4">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-label">Sampling Rate</div>
+        <span class="stat-value counter" id="stat-fs" data-target="200">0</span>
+        <div class="stat-unit">Hz · Nyquist 100 Hz</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     HOW IT WORKS
+══════════════════════════════════════════ -->
+<section id="how-it-works" class="section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">Methodology</span>
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-desc">A four-step pipeline transforms raw acceleration data into identified structural modes</p>
+    </div>
+
+    <div class="pipeline fade-in">
+      <div class="pipeline-step">
+        <div class="step-bubble s1">
+          🌊
+          <span class="step-num">1</span>
+        </div>
+        <div class="step-title">Raw Vibration Data</div>
+        <div class="step-desc">Ambient acceleration signals from sensors on each floor of the 3-story LANL shear-frame structure.</div>
+        <span class="step-tag">scipy · numpy</span>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-bubble s2">
+          🔊
+          <span class="step-num">2</span>
+        </div>
+        <div class="step-title">Spectrum (PSD)</div>
+        <div class="step-desc">Welch's method with Hann windows estimates the one-sided Power Spectral Density, revealing frequency content.</div>
+        <span class="step-tag">welch · nperseg=2048</span>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-bubble s3">
+          🔍
+          <span class="step-num">3</span>
+        </div>
+        <div class="step-title">Peak Features</div>
+        <div class="step-desc">Prominent peaks are detected; each yields frequency f₀, log-amplitude, and damping ζ via half-power bandwidth.</div>
+        <span class="step-tag">find_peaks · Δf/(2f₀)</span>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-bubble s4">
+          🤖
+          <span class="step-num">4</span>
+        </div>
+        <div class="step-title">GMM Clustering</div>
+        <div class="step-desc">A Gaussian Mixture Model clusters peaks in [f₀, log-PSD, ζ] space. BIC selects the optimal component count.</div>
+        <span class="step-tag">GaussianMixture · BIC</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     INTERACTIVE CHARTS
+══════════════════════════════════════════ -->
+<section id="charts" class="section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">Interactive Analysis</span>
+      <h2 class="section-title">Results &amp; Visualisations</h2>
+      <p class="section-desc">Hover, zoom and pan any chart — data loaded from the analysis pipeline</p>
+    </div>
+
+    <div class="charts-grid">
+
+      <!-- Chart 1: Spectrum + Peaks -->
+      <div class="chart-card fade-in">
+        <div class="chart-header">
+          <span class="chart-title">🔊 Power Spectral Density with Detected Peaks</span>
+          <span class="chart-badge badge-cyan">Welch PSD · log scale</span>
+        </div>
+        <div id="chart-psd" class="chart-plot"></div>
+        <p class="chart-caption">
+          The Welch PSD (cyan line) is estimated with a 2048-sample Hann window (Δf ≈ 0.098 Hz).
+          Triangle markers (▲) indicate spectral peaks identified via prominence-based detection;
+          each is coloured by its assigned GMM cluster / vibration mode.
+        </p>
+      </div>
+
+      <!-- Chart 2: Cluster Scatter -->
+      <div class="chart-card fade-in fade-in-delay-1">
+        <div class="chart-header">
+          <span class="chart-title">🫧 GMM Cluster Scatter — Frequency × Amplitude</span>
+          <span class="chart-badge badge-purple">Bubble size ∝ damping ζ</span>
+        </div>
+        <div id="chart-scatter" class="chart-plot"></div>
+        <p class="chart-caption">
+          Each bubble is a detected spectral peak placed in the frequency–log-amplitude plane.
+          Bubble size encodes the estimated damping ratio ζ.
+          Colours correspond to GMM cluster assignments; well-separated clusters confirm
+          distinct structural vibration modes.
+        </p>
+      </div>
+
+      <!-- Chart 3: BIC curve -->
+      <div class="chart-card fade-in fade-in-delay-2">
+        <div class="chart-header">
+          <span class="chart-title">📉 BIC Model Selection Curve</span>
+          <span class="chart-badge badge-teal">Lower BIC = better</span>
+        </div>
+        <div id="chart-bic" class="chart-plot"></div>
+        <p class="chart-caption">
+          Bayesian Information Criterion (BIC) scores for GMM models with 1 to 6 components.
+          The star (★) marks the optimal component count selected automatically;
+          this balances goodness-of-fit against model complexity.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     MODE TABLE
+══════════════════════════════════════════ -->
+<section id="modes" class="section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">Modal Parameters</span>
+      <h2 class="section-title">Identified Vibration Modes</h2>
+      <p class="section-desc">GMM cluster centroids vs. LANL ground-truth modal frequencies</p>
+    </div>
+
+    <div class="table-wrapper fade-in">
+      <table id="mode-table" aria-label="Modal parameters table">
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Mean Frequency</th>
+            <th>Std Freq.</th>
+            <th>log₁₀(PSD)</th>
+            <th>Mean Damping ζ</th>
+            <th>Peaks in Cluster</th>
+            <th>Ground Truth f₀</th>
+          </tr>
+        </thead>
+        <tbody id="mode-table-body">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     GMM EXPLANATION
+══════════════════════════════════════════ -->
+<section id="why-gmm" class="section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">Methodology</span>
+      <h2 class="section-title">Why GMM for Mode Identification?</h2>
+      <p class="section-desc">Gaussian Mixture Models bring unique advantages to Operational Modal Analysis</p>
+    </div>
+
+    <div class="explain-grid fade-in">
+      <div class="explain-card">
+        <h3>✅ GMM Advantages</h3>
+        <ul>
+          <li>Data-driven mode identification — no assumed mode count</li>
+          <li>Probabilistic cluster assignments reflect uncertainty</li>
+          <li>Automatic model order selection via BIC criterion</li>
+          <li>Naturally groups harmonics, noise, and true modes</li>
+          <li>Full covariance captures correlated feature structure</li>
+          <li>Robust to outlier peaks via soft assignments</li>
+        </ul>
+      </div>
+      <div class="explain-card">
+        <h3>⚖️ Comparison with Classical OMA</h3>
+        <ul>
+          <li>SSI / FDD require more domain knowledge and tuning</li>
+          <li>GMM is fully unsupervised and scalable</li>
+          <li>BIC handles model order where SSI needs stabilisation diagrams</li>
+          <li>Compatible with any feature-rich spectral representation</li>
+          <li>Easier integration into automated health-monitoring pipelines</li>
+          <li>Uncertainty propagation is built into the probabilistic framework</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     DATASET & CITATIONS
+══════════════════════════════════════════ -->
+<section id="citations" class="section">
+  <div class="container">
+    <div class="section-header fade-in">
+      <span class="section-tag">Dataset &amp; References</span>
+      <h2 class="section-title">LANL Benchmark &amp; Citations</h2>
+      <p class="section-desc">Synthetic data mirrors the Los Alamos National Laboratory 3-story shear-frame building</p>
+    </div>
+
+    <div class="citations-wrapper fade-in">
+      <div class="citation-block">
+        <h3>🏛 Synthetic Signal Parameters</h3>
+        <table class="param-table">
+          <tr><td>Mode 1 — Natural Frequency</td><td>2.5 Hz</td></tr>
+          <tr><td>Mode 1 — Damping Ratio ζ</td><td>1.0 %</td></tr>
+          <tr><td>Mode 2 — Natural Frequency</td><td>7.1 Hz</td></tr>
+          <tr><td>Mode 2 — Damping Ratio ζ</td><td>1.5 %</td></tr>
+          <tr><td>Mode 3 — Natural Frequency</td><td>12.4 Hz</td></tr>
+          <tr><td>Mode 3 — Damping Ratio ζ</td><td>2.0 %</td></tr>
+          <tr><td>Signal Duration</td><td>60 s</td></tr>
+          <tr><td>Sampling Rate</td><td>200 Hz</td></tr>
+          <tr><td>Noise Level σ</td><td>0.05</td></tr>
+          <tr><td>Random Seed</td><td>42</td></tr>
+        </table>
+      </div>
+
+      <div class="citation-block">
+        <h3>📚 Key References</h3>
+        <div class="citation-item">
+          <cite>K. Worden, G. Manson, N. Fieller (2000)</cite>
+          "Damage detection using outlier analysis," <em>Journal of Sound and Vibration</em>, 229(3), 647–667.
+        </div>
+        <div class="citation-item">
+          <cite>S. W. Doebling, C. R. Farrar et al. (1996)</cite>
+          "Damage identification and health monitoring of structural and mechanical systems from changes in their vibration characteristics," <em>LANL Report LA-13070-MS</em>.
+        </div>
+        <div class="citation-item">
+          <cite>R. Brincker, L. Zhang, P. Andersen (2001)</cite>
+          "Modal identification of output-only systems using frequency domain decomposition," <em>Smart Materials and Structures</em>, 10(3), 441–445.
+        </div>
+        <div class="citation-item">
+          <cite>LANL SHM Benchmark Dataset</cite>
+          <a href="http://institute.lanl.gov/ei/software-and-data/" target="_blank" rel="noopener">institute.lanl.gov/ei/software-and-data/</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-logo">🏗</div>
+    <div class="footer-title">SHM GMM Clustering</div>
+    <div class="footer-sub">Structural Health Monitoring · Operational Modal Analysis · Machine Learning</div>
+
+    <div class="footer-links">
+      <a href="#hero">Home</a>
+      <a href="#how-it-works">How it Works</a>
+      <a href="#charts">Charts</a>
+      <a href="#modes">Modes</a>
+      <a href="#citations">References</a>
+    </div>
+
+    <div class="footer-stack">
+      <span class="stack-pill">NumPy</span>
+      <span class="stack-pill">SciPy</span>
+      <span class="stack-pill">scikit-learn</span>
+      <span class="stack-pill">Plotly.js</span>
+      <span class="stack-pill">Plain HTML/CSS/JS</span>
+    </div>
+
+    <p class="footer-copy">
+      Synthetic data inspired by the LANL 3-story SHM Benchmark · Static build — no server required
+    </p>
+  </div>
+</footer>
+
+<!-- Main JS -->
+<script src="script.js"></script>
+</body>
+</html>
